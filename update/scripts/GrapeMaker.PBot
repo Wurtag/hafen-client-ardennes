@@ -1,0 +1,302 @@
+// Rework of grape making bot by Purus
+// 500 grapes = 100 L    490 g = 14 stockpiles = 98 L
+
+const PBotUtils = Java.type('haven.purus.pbot.PBotUtils');
+const PBotGobAPI = Java.type('haven.purus.pbot.PBotGobAPI');
+const PBotAPI = Java.type('haven.purus.pbot.PBotAPI');
+const PBotCharacterAPI = Java.type('haven.purus.pbot.PBotCharacterAPI');
+const ui = PBotAPI.ui();
+const PBotWindowAPI = Java.type('haven.purus.pbot.PBotWindowAPI');
+const window = PBotUtils.PBotWindow(ui, "Grape Maker", 220, 200, ScriptID);
+const seedBarrels = [];
+const juiceBarrels = [];
+const grapeStockpiles = [];
+let winepressGob;
+let stop = false;
+
+window.addButton("seedBtn", "Add seed barrels", 180, 10, 10);
+window.addButton("juiceBtn", "Add juice barrels", 180, 10, 40);
+window.addButton("grapeBtn", "Add grape stockpiles", 180, 10, 70);
+window.addButton("winepressBtn", "Choose a winepress", 180, 10, 100);
+window.addButton("startBtn", "Start", 180, 10, 130);
+window.addButton("stopBtn", "EXIT", 50, 10, 170);
+window.addButton("pressBtn", "press", 50, 60, 170);
+window.addButton("relitrwine", "litr", 50, 110, 170);
+window.addButton("seedcropwine", "seed", 50, 160, 170);
+
+const stopBtn = () => {
+	PBotUtils.stop();
+};
+
+function shouldStop() {
+	if (PBotCharacterAPI.getEnergy(ui) <= 22) PBotUtils.sysMsg(ui, "Not enough energy!");
+	if (stop) PBotUtils.sysMsg(ui, "Stop!");
+	if (window.closed()) PBotUtils.sysMsg(ui, "Windows closed!");
+	return stop || window.closed() || PBotCharacterAPI.getEnergy(ui) <= 22;
+};
+
+const seedBtn = () => {
+	PBotUtils.selectArea(ui);
+	const gobs = PBotUtils.gobsInArea(ui, PBotUtils.getSelectedAreaA(), PBotUtils.getSelectedAreaB());
+	for(let i=0; i<gobs.size(); i++) {
+		if(gobs[i].getResname() === 'gfx/terobjs/barrel')
+			seedBarrels.push(gobs[i]);
+	}
+	PBotUtils.sysMsg(ui, "Seed barrels currently chosen: " + seedBarrels.length);
+};
+
+const juiceBtn = () => {
+	PBotUtils.selectArea(ui);
+	const gobs = PBotUtils.gobsInArea(ui, PBotUtils.getSelectedAreaA(), PBotUtils.getSelectedAreaB());
+	for(let i=0; i<gobs.size(); i++) {
+		if(gobs[i].getResname() === 'gfx/terobjs/barrel')
+			juiceBarrels.push(gobs[i]);
+	}
+	PBotUtils.sysMsg(ui, "Juice barrels currently chosen: " + juiceBarrels.length);
+};
+
+const grapeBtn = () => {
+	PBotUtils.selectArea(ui);
+	const gobs = PBotUtils.gobsInArea(ui, PBotUtils.getSelectedAreaA(), PBotUtils.getSelectedAreaB());
+	for(let i=0; i<gobs.size(); i++) {
+		if(gobs[i].getResname() === 'gfx/terobjs/stockpile-grapes')
+			grapeStockpiles.push(gobs[i]);
+	}
+	PBotUtils.sysMsg(ui, "Grape stockpiles currently chosen: " + grapeStockpiles.length);
+};
+
+const winepressBtn = () => {
+	PBotUtils.sysMsg(ui, "Please alt+click a winepress!");
+	const selectedGob = PBotGobAPI.selectGob(ui);
+	if(selectedGob.getResname() === 'gfx/terobjs/winepress') {
+		PBotUtils.sysMsg(ui, "Winepress selected!");
+		winepressGob = selectedGob;
+	} else {
+		PBotUtils.sysMsg(ui, "Selected gob was not a winepress!");
+	}
+};
+
+const pressBtn = () => {
+	const pressWindow = PBotUtils.getWindow(ui, "Extraction Press");
+	const pressInventory = PBotWindowAPI.getInventory(pressWindow);
+	
+	PBotUtils.sleep(1000); //wait
+
+	if (PBotCharacterAPI.getStamina() < 60)
+        if (!PBotUtils.drink(ui, true)) {
+        	PBotUtils.sysMsg(ui, "Ran out of water!");
+        	return;
+        }
+		
+	let grapeInPlayer = PBotUtils.playerInventory(ui).getInventoryItemsByNames(['Grapes']);
+	let grapeInPress = pressInventory.getInventoryItemsByNames(['Grapes']);
+	let seedInPlayer = PBotUtils.playerInventory(ui).getInventoryItemsByResnames(['gfx/invobjs/seed-grape']);
+	let seedInPress = pressInventory.getInventoryItemsByResnames(['gfx/invobjs/seed-grape']);
+	
+	const Button = Java.type('haven.Button');
+	const pressb = pressWindow.getchild(Button);  //Find Press Button
+	
+	const VMeter = Java.type('haven.VMeter');
+	const juiceMeter = pressWindow.getchild(VMeter);
+	let juiceAmount = juiceMeter.amount / 100;
+	
+	if (pressb == null) {
+		PBotUtils.sysMsg(ui, "Press Button not found!");
+		return;
+	} else if (pressb.text.text != "Press") {
+		PBotUtils.sysMsg(ui, "Press Button not found!");
+		return;
+	}
+	
+	while ((juiceAmount != 1 || (grapeInPlayer.size() != 0 && grapeInPress.size() != 0)) && !shouldStop()) {
+		let freePressSlots = pressInventory.freeSlotsInv();
+		let freePlayerSlots = PBotUtils.playerInventory(ui).freeSlotsInv();
+		
+		for (let i = 0; i < Math.min(grapeInPlayer.size(), freePressSlots); i++) {
+			grapeInPlayer.get(i).transferItem();
+		}
+		
+		pressb.click();    //Click press button
+		
+		PBotUtils.sleep(2000);
+		while (PBotGobAPI.player(ui).getPoses().contains("gfx/borka/winepressan") && !shouldStop()) {
+			PBotUtils.sleep(1000);
+		}
+		
+		juiceAmount = juiceMeter.amount / 100;
+		grapeInPlayer = PBotUtils.playerInventory(ui).getInventoryItemsByNames(['Grapes']);
+		grapeInPress = pressInventory.getInventoryItemsByNames(['Grapes']);
+		seedInPlayer = PBotUtils.playerInventory(ui).getInventoryItemsByResnames(['gfx/invobjs/seed-grape']);
+		seedInPress = pressInventory.getInventoryItemsByResnames(['gfx/invobjs/seed-grape']);
+		
+		while (seedInPress.size() > 0 && !shouldStop()) {
+			freePressSlots = pressInventory.freeSlotsInv();
+			freePlayerSlots = PBotUtils.playerInventory(ui).freeSlotsInv();
+			
+			for (let i = 0; i < Math.min(seedInPress.size(), freePlayerSlots); i++) {
+				seedInPress.get(i).transferItem();
+			}
+			PBotUtils.sleep(1000);
+			
+			seedInPress = pressInventory.getInventoryItemsByResnames(['gfx/invobjs/seed-grape']);
+			grapeInPress = pressInventory.getInventoryItemsByNames(['Grapes']);
+		}
+	}
+};
+
+const relitrwine = () => {
+	fillJuiceBarrel(juiceBarrels, winepressGob);
+}
+
+const seedcropwine = () => {
+	fillSeedBarrel(seedBarrels);
+}
+
+function fillJuiceBarrel(jb, wp) {
+	PBotUtils.PathfinderRightClick(ui, jb[0], 0);
+	
+	PBotWindowAPI.waitForWindow(ui, "Barrel", 2000);
+	const barr = PBotUtils.getWindow(ui, "Barrel");
+	
+	const Label = Java.type('haven.Label');
+	let lab = barr.getchild(Label);
+	
+	if (lab != null && checkContain('100.00')) {
+		jb.shift();
+		if (jb.length === 0) {
+			stop = true;
+			PBotUtils.sysMsg(ui, "Juice barrels is full!");
+			return;
+		}
+		PBotUtils.PathfinderRightClick(ui, jb[0], 0);
+	}
+	
+	let juiceBarrelCoord = jb[0].getRcCoords();
+	let playerCoord = PBotUtils.player(ui).rc;
+	
+	while (!PBotGobAPI.player(ui).getPoses().contains("gfx/borka/banzai") && !shouldStop()) {
+		PBotUtils.doAct(ui, "carry");
+		PBotUtils.sleep(1000);
+		PBotUtils.doClick(ui, jb[0].gob, 1, 0);
+		PBotUtils.sleep(1000);
+	}
+	
+	PBotUtils.PathfinderRightClick(ui, wp, 0);
+	PBotUtils.sleep(1000);
+	PBotUtils.PathfinderRightClick(ui, wp, 0);
+	PBotUtils.sleep(1000);
+	
+	while (PBotGobAPI.player(ui).getPoses().contains("gfx/borka/banzai") && !shouldStop()) {
+		PBotUtils.pfmove(ui, playerCoord.x, playerCoord.y);
+		PBotUtils.mapClick(ui, juiceBarrelCoord.x, juiceBarrelCoord.y, 3, 0);
+		PBotUtils.sleep(1000);
+	}
+}
+
+function fillSeedBarrel(sb) {
+	let sip = fseedinplayer();
+	PBotUtils.PathfinderRightClick(ui, sb[0], 0);
+	PBotWindowAPI.waitForWindow(ui, "Barrel", 2000);
+	if (sip.size() > 0) {
+		sip.get(0).takeItem(5);
+	
+		while (PBotUtils.getItemAtHand(ui) != null && !shouldStop()) {
+			sb[0].itemClick(1);
+			PBotUtils.sleep(100);
+		}
+	}
+}
+
+function checkContain(str) {
+	const barr = PBotUtils.getWindow(ui, "Barrel");
+	
+	const Widget = Java.type('haven.Widget');
+	let widg = barr.getchilds(Widget);
+	
+	const Label = Java.type('haven.Label');
+	let lab = barr.getchild(Label);
+	
+	if (lab.texts.contains(str)) return true;
+	else return false;
+}
+
+function fseedinplayer() {
+	return PBotUtils.playerInventory(ui).getInventoryItemsByResnames(['gfx/invobjs/seed-grape']);
+}
+
+const startBtn = () => {
+	try {
+
+	PBotUtils.sysMsg(ui, "Starting the grapemaker bot...");
+	if(!winepressGob) {
+		PBotUtils.sysMsg(ui, "Winepress not selected! Cancelling...");
+		return;
+	}
+	if(seedBarrels.length === 0) {
+		PBotUtils.sysMsg(ui, "Seed barrels not selected! Cancelling...");
+		return;
+	}
+	if(juiceBarrels.length === 0) {
+		PBotUtils.sysMsg(ui, "Juice barrels not selected! Cancelling...");
+		return;
+	}
+	while(!shouldStop()) {
+		const playerInv = PBotUtils.playerInventory(ui);
+		if(grapeStockpiles.length === 0) {
+			PBotUtils.sysMsg(ui, "Ran out of grape stockpiles!");
+			break;
+		}
+		let grapeInInv = PBotUtils.playerInventory(ui).getInventoryItemsByNames(['Grapes']).size();
+		while(PBotUtils.playerInventory(ui).freeSlotsInv() > 0 && !shouldStop()) {
+			if(grapeStockpiles.length === 0) {
+				// Out of grape stockpiles
+				break;
+			}
+			while (grapeStockpiles[0] == null) {
+				grapeStockpiles.shift();
+			}
+			PBotUtils.PathfinderRightClick(ui, grapeStockpiles[0], 0);
+			PBotUtils.sleep(1000);
+			PBotWindowAPI.waitForWindow(ui, "Stockpile", 2000);
+			const slots = PBotUtils.playerInventory(ui).freeSlotsInv();
+			const grape = PBotWindowAPI.getStockpileUsedCapacity(ui);
+			if(grape <= slots)
+				grapeStockpiles.shift();
+			PBotWindowAPI.takeItemsFromStockpile(ui, Math.min(slots, grape));
+			grapeInInv += Math.min(slots, grape);
+			while(PBotUtils.playerInventory(ui).freeSlotsInv() != Math.max(0, slots-grape) && !shouldStop()) {
+				PBotUtils.sleep(25);
+			}
+		}
+
+		while (PBotUtils.getWindow(ui, "Extraction Press") == null && !shouldStop()) {
+			if (PBotUtils.PathfinderRightClick(ui, winepressGob, 0)) {
+			} else {
+				PBotUtils.sysMsg(ui, "Winepress not found");
+				break;
+			}
+			while (PBotUtils.player().isMoving() && !shouldStop()) {
+				PBotUtils.sleep(1000);
+			}
+		}
+		
+		pressBtn();
+		
+		fillSeedBarrel(seedBarrels); //seedBarrelFiller
+		
+		fillJuiceBarrel(juiceBarrels, winepressGob); //juiceBarrelFiller
+		
+		PBotUtils.sleep(1000);
+	}
+	PBotUtils.sysMsg(ui, "Wine maker bot finished!");
+	
+	} catch(e) {
+		if (e.stack){
+			PBotUtils.sysMsg(ui, e.stack, 255,128,128);
+		} else {
+			PBotUtils.sysMsg(ui, `No Error.stack found: ${e}`, 255,128,128);
+		}
+		throw e;
+	} 
+
+};

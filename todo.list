@@ -1,0 +1,70 @@
+MusselPicker - //FIXME name, how ender, shift click
+PickForageable - //FIXME custom menu
+sounds
+    to be continued
+indir to text and pictures
+add pack warcraft icons
+add animated login screen aka world of warcraft reopen settings? i don't know how
+map - bigmap add grid, setting, editor for marks
+    +add cave marks
+    fix object id
+    MapFileWidget - fix Unknown tooltip from 7 zoom
+    pathfinder on bigmap
+    zoomable icons
+    traces
+quickslots - make custom and background without pictures
+camera save state
+fix water
+new textures for game
+edit farming bot small margin button = add water barrel = check barrels
+movable widgets like Ender
+move files to other folder like grid_ids scripts
+find ingame reloading textures
+make changelogfile and more
+button to switch a lot of function of game (light grid border)
+Option button to Characters List ?
+Utils to file config
+utils don't work??
+Fight
+    keybind
+    movable
+Sort inventory
+Shift click to link in textentry
+wiki fix 0.50 kg
+session widget to up
+prepare map and mapmarkers for render client
+notifications+ in the corner ExpWnd
+more big animals - customize
+ingame cookbook
+food info categories fix
+indicator liquid of watercontainer
+list of information about game like food_data.json
+movable buffs
+free fly camera
+foodmeter to imeter
+food buff meat bread what is it? fix
+ingame todolist
+equip window small. info at center. rotate char
+
+
+for Jorb and Loftar:
+    shed for wagon like Knaar Dock+
+    stockpiles for logs or maybe Object
+
+launcher rewrite:
+    +autocreater files
+    log changelog and grid update everytime
+@write render client pls@
+
+
++pbot session - короче добавить для пбота атрибут номер сессии и тогда можно разпараллелить старых ботов и создать мультисессионую ботоводню
+    +PBot(int session)   PBot[]
++MenuGrid -  //ADD custom size == work
++fix multisession freeze     fix?????
++fix logout crash            fix?????
++fix text с обводкой         added???
++modify loginscreen to fullhd
++add pack gachi sounds
++and pack dark souls sounds
++custom color for quality
++why don't work crashlogs? - because moved to build folder then
